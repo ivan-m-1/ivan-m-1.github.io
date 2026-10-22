@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Geometry Dash — 10 уровней</title>
+  <style>
+    /* ========== БАЗОВЫЕ СТИЛИ ========== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0a0a12;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      color: #fff;
+    }
+
+    #app {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .screen {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    /* ========== МЕНЮ (ИСПРАВЛЕНО ДЛЯ ТЕЛЕФОНОВ) ========== */
+    #menuScreen {
+      background: radial-gradient(circle at 50% 30%, #1a1a3e 0%, #0a0a12 70%);
+      gap: 15px;
+      justify-content: flex-start; /* Чтобы не обрезало сверху */
+      padding: 40px 10px; /* Отступы */
+      overflow-y: auto; /* Разрешаем прокрутку на телефоне */
+    }
+
+    .logo {
+      font-size: clamp(28px, 8vw, 72px);
+      font-weight: 900;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      background: linear-gradient(180deg, #6ef3ff, #2a6cff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: 0 0 30px rgba(80, 180, 255, 0.4);
+      margin-bottom: 4px;
+      text-align: center;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #8899bb;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .level-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      max-width: 900px;
+      width: 100%;
+      padding: 10px;
+      flex-shrink: 0;
+    }
+
+    .level-card {
+      aspect-ratio: 1 / 1;
+      border-radius: 12px;
+      border: 2px solid #2a2a55;
+      background: linear-gradient(145deg, #12122a, #1a1a3a);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+      position: relative;
+    }
+
+    .level-card:active {
+      transform: scale(0.95);
+    }
+
+    .level-card .num {
+      font-size: clamp(20px, 5vw, 38px);
+      font-weight: 900;
+      color: #e8f0ff;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+
+    .level-card .diff {
+      font-size: clamp(8px, 2vw, 11px);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 6px;
+      padding: 2px 6px;
+      border-radius: 20px;
+      background: rgba(0,0,0,0.35);
+      white-space: nowrap;
+    }
+
+    .diff-easy   { color: #4cff8a; }
+    .diff-normal { color: #ffd84c; }
+    .diff-hard   { color: #ff7a4c; }
+    .diff-harder { color: #ff4c7a; }
+    .diff-insane { color: #c44cff; }
+
+    .menu-footer {
+      margin-top: auto;
+      padding-bottom: 20px;
+      font-size: 13px;
+      color: #667799;
+      text-align: center;
+    }
+    .menu-footer b { color: #aaccff; }
+
+    /* ========== ИГРОВОЙ ЭКРАН ========== */
+    #gameScreen {
+      background: #0a0a12;
+    }
+
+    #gameCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #0d0d1f;
+      touch-action: none; /* Убирает скролл при нажатии */
+    }
+
+    #hud {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    #hud > * { pointer-events: auto; }
+
+    .hud-btn {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #ccddff;
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .hud-level {
+      font-size: 16px;
+      font-weight: 700;
+      color: #e8f0ff;
+    }
+
+    .hud-attempts {
+      font-size: 14px;
+      color: #8899bb;
+    }
+
+    #progressBarContainer {
+      position: absolute;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80%;
+      max-width: 600px;
+      height: 10px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 10px;
+      overflow: hidden;
+      z-index: 10;
+    }
+
+    #progressBar {
+      height: 100%;
+      width: 0%;
+      border-radius: 10px;
+      background: linear-gradient(90deg, #2a6cff, #6ef3ff);
+      transition: width 0.1s linear;
+    }
+
+    /* ========== ЭКРАНЫ СМЕРТИ / ПОБЕДЫ ========== */
+    .overlay {
+      background: rgba(5, 5, 15, 0.85);
+      backdrop-filter: blur(6px);
+      z-index: 50;
+      justify-content: center;
+    }
+
+    .death-box, .win-box {
+      background: linear-gradient(160deg, #16162e, #0e0e1f);
+      border: 1px solid #2a2a55;
+      border-radius: 24px;
+      padding: 30px 20px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 280px;
+      margin: 0 20px;
+    }
+
+    .death-box h2 { color: #ff5c7a; font-size: 24px; }
+    .win-box h2   { color: #4cff8a; font-size: 24px; }
+
+    .death-box p, .win-box p {
+      color: #99aacc;
+      font-size: 15px;
+    }
+
+    .big-btn {
+      padding: 14px 28px;
+      border: none;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      background: linear-gradient(180deg, #3a7bff, #1f4fd0);
+      color: #fff;
+    }
+
+    .big-btn.secondary {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.18);
+      color: #bbccdd;
+    }
+
+    /* ========== АДАПТИВ ДЛЯ ТЕЛЕФОНОВ ========== */
+    @media (max-width: 700px) {
+      .level-grid {
+        grid-template-columns: repeat(3, 1fr); /* По 3 карточки в ряд */
+        gap: 10px;
+      }
+      #hud { padding: 10px; }
+      .hud-level { font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- ЭКРАН МЕНЮ -->
+    <div id="menuScreen" class="screen active">
+      <h1 class="logo">GEOMETRY DASH</h1>
+      <p class="subtitle">Выбери уровень</p>
+      <div id="levelGrid" class="level-grid"></div>
+      <div class="menu-footer">
+        <span>Управление: <b>Пробел / Клик / Тап</b></span>
+      </div>
+    </div>
+
+    <!-- ЭКРАН ИГРЫ -->
+    <div id="gameScreen" class="screen">
+      <div id="hud">
+        <button id="backBtn" class="hud-btn">← Меню</button>
+        <div id="levelName" class="hud-level">Уровень 1</div>
+        <div id="attempts" class="hud-attempts">Попытки: 0</div>
+      </div>
+      <canvas id="gameCanvas" width="1280" height="720"></canvas>
+      <div id="progressBarContainer">
+        <div id="progressBar"></div>
+      </div>
+    </div>
+
+    <!-- ЭКРАН ПРОИГРЫША -->
+    <div id="deathScreen" class="screen overlay">
+      <div class="death-box">
+        <h2>Ты разбился!</h2>
+        <p id="deathProgress">Прогресс: 0%</p>
+        <button id="retryBtn" class="big-btn">Ещё раз</button>
+        <button id="deathMenuBtn" class="big-btn secondary">В меню</button>
+      </div>
+    </div>
+
+    <!-- ЭКРАН ПОБЕДЫ -->
+    <div id="winScreen" class="screen overlay">
+      <div class="win-box">
+        <h2>Уровень пройден!</h2>
+        <p id="winLevelName"></p>
+        <button id="nextLevelBtn" class="big-btn">Следующий уровень</button>
+        <button id="winMenuBtn" class="big-btn secondary">В меню</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const CANVAS_W = 1280;
+      const CANVAS_H = 720;
+      const GROUND_Y = CANVAS_H - 120;
+      const PLAYER_SIZE = 44;
+      const GRAVITY = 0.85;
+      const JUMP_FORCE = -15.5;
+      const BASE_SPEED = 6.2;
+      const MAX_FALL = 22;
+
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+      const menuScreen = document.getElementById('menuScreen');
+      const gameScreen = document.getElementById('gameScreen');
+      const deathScreen = document.getElementById('deathScreen');
+      const winScreen = document.getElementById('winScreen');
+      const levelGrid = document.getElementById('levelGrid');
+      const levelNameEl = document.getElementById('levelName');
+      const attemptsEl = document.getElementById('attempts');
+      const progressBar = document.getElementById('progressBar');
+      const deathProgress = document.getElementById('deathProgress');
+      const winLevelName = document.getElementById('winLevelName');
+      const backBtn = document.getElementById('backBtn');
+      const retryBtn = document.getElementById('retryBtn');
+      const deathMenuBtn = document.getElementById('deathMenuBtn');
+      const nextLevelBtn = document.getElementById('nextLevelBtn');
+      const winMenuBtn = document.getElementById('winMenuBtn');
+
+      let currentLevelIndex = 0;
+      let attempts = 0;
+      let gameState = 'menu';
+      let animationId = null;
+      let level = null;
+      let player = null;
+      let cameraX = 0;
+      let levelLength = 0;
+
+      // Генерация уровней
+      const LEVELS = [
+        {
+          name: 'Уровень 1 — Разминка', difficulty: 'easy', bg: '#0d0d1f', ground: '#1a1a3a', accent: '#3a7bff', speed: 1.0,
+          objects: [
+            { type: 'spike', x: 900, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 1500, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 2100, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'block', x: 2700, y: GROUND_Y - 80, w: 80, h: 80 },
+            { type: 'spike', x: 3200, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 3700, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 4200, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 4700, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'block', x: 5300, y: GROUND_Y - 80, w: 80, h: 80 },
+            { type: 'spike', x: 5900, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 6500, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'finish', x: 7200, y: GROUND_Y - 200, w: 60, h: 200 },
+          ],
+        },
+        {
+          name: 'Уровень 2 — Шипы', difficulty: 'easy', bg: '#0e0d1f', ground: '#1b1a3a', accent: '#4a8aff', speed: 1.05,
+          objects: [
+            { type: 'spike', x: 800, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 1200, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 1600, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'block', x: 2100, y: GROUND_Y - 80, w: 80, h: 80 },
+            { type: 'spike', x: 2500, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 2900, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 3300, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 3700, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'block', x: 4200, y: GROUND_Y - 80, w: 80, h: 80 },
+            { type: 'spike', x: 4700, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 5100, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 5500, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 5900, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 6300, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'finish', x: 7000, y: GROUND_Y - 200, w: 60, h: 200 },
+          ],
+        },
+        {
+          name: 'Уровень 3 — Блоки', difficulty: 'normal', bg: '#100e22', ground: '#1e1c40', accent: '#5a9aff', speed: 1.1,
+          objects: [
+            { type: 'spike', x: 700, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'block', x: 1100, y: GROUND_Y - 80, w: 80, h: 80 },
+            { type: 'spike', x: 1500, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 1850, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'block', x: 2200, y: GROUND_Y - 120, w: 80, h: 120 },
+            { type: 'spike', x: 2600, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 2950, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 3300, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'block', x: 3700, y: GROUND_Y - 80, w: 80, h: 80 },
+            { type: 'spike', x: 4100, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 4450, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 4800, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'block', x: 5200, y: GROUND_Y - 120, w: 80, h: 120 },
+            { type: 'spike', x: 5650, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 6000, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 6350, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'finish', x: 7000, y: GROUND_Y - 200, w: 60, h: 200 },
+          ],
+        },
+        {
+          name: 'Уровень 4 — Ритм', difficulty: 'normal', bg: '#12102a', ground: '#201e45', accent: '#6aabff', speed: 1.15,
+          objects: [
+            { type: 'spike', x: 650, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 950, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 1250, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'block', x: 1600, y: GROUND_Y - 80, w: 80, h: 80 },
+            { type: 'spike', x: 1950, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 2250, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 2550, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 2850, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'block', x: 3200, y: GROUND_Y - 120, w: 80, h: 120 },
+            { type: 'spike', x: 3600, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 3900, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 4200, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 4500, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'block', x: 4850, y: GROUND_Y - 80, w: 80, h: 80 },
+            { type: 'spike', x: 5250, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 5550, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 5850, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 6150, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'finish', x: 6800, y: GROUND_Y - 200, w: 60, h: 200 },
+          ],
+        },
+        {
+          name: 'Уровень 5 — Плотность', difficulty: 'hard', bg: '#14122e', ground: '#23214a', accent: '#7abbff', speed: 1.2,
+          objects: [
+            { type: 'spike', x: 600, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 880, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 1160, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 1440, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'block', x: 1750, y: GROUND_Y - 80, w: 80, h: 80 },
+            { type: 'spike', x: 2080, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 2360, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 2640, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 2920, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'block', x: 3250, y: GROUND_Y - 120, w: 80, h: 120 },
+            { type: 'spike', x: 3620, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 3900, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 4180, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 4460, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 4740, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'block', x: 5050, y: GROUND_Y - 80, w: 80, h: 80 },
+            { type: 'spike', x: 5400, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 5680, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 5960, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 6240, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'finish', x: 6900, y: GROUND_Y - 200, w: 60, h: 200 },
+          ],
+        },
+        {
+          name: 'Уровень 6 — Гравитация', difficulty: 'hard', bg: '#16142f', ground: '#26244f', accent: '#8acbff', speed: 1.25,
+          objects: [
+            { type: 'spike', x: 550, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 800, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 1050, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'gravity', x: 1400, y: GROUND_Y - 200, w: 40, h: 120, dir: -1 },
+            { type: 'block', x: 1750, y: 80, w: 80, h: 80 },
+            { type: 'spike', x: 2100, y: 0, w: 44, h: 44, flip: true },
+            { type: 'spike', x: 2350, y: 0, w: 44, h: 44, flip: true },
+            { type: 'gravity', x: 2700, y: GROUND_Y - 200, w: 40, h: 120, dir: 1 },
+            { type: 'spike', x: 3100, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 3350, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'block', x: 3650, y: GROUND_Y - 120, w: 80, h: 120 },
+            { type: 'spike', x: 4000, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 4250, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 4500, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'gravity', x: 4850, y: GROUND_Y - 200, w: 40, h: 120, dir: -1 },
+            { type: 'spike', x: 5200, y: 0, w: 44, h: 44, flip: true },
+            { type: 'spike', x: 5450, y: 0, w: 44, h: 44, flip: true },
+            { type: 'gravity', x: 5800, y: GROUND_Y - 200, w: 40, h: 120, dir: 1 },
+            { type: 'spike', x: 6150, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 6400, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'finish', x: 7000, y: GROUND_Y - 200, w: 60, h: 200 },
+          ],
+        },
+        {
+          name: 'Уровень 7 — Коридор', difficulty: 'harder', bg: '#181630', ground: '#292755', accent: '#9adbff', speed: 1.3,
+          objects: [
+            { type: 'spike', x: 500, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 750, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 1000, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'block', x: 1300, y: GROUND_Y - 80, w: 80, h: 80 },
+            { type: 'spike', x: 1600, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 1850, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 2100, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 2350, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'block', x: 2650, y: GROUND_Y - 120, w: 80, h: 120 },
+            { type: 'spike', x: 3000, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 3250, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 3500, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 3750, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 4000, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'block', x: 4300, y: GROUND_Y - 80, w: 80, h: 80 },
+            { type: 'spike', x: 4650, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 4900, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 5150, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 5400, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 5650, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'block', x: 5950, y: GROUND_Y - 120, w: 80, h: 120 },
+            { type: 'spike', x: 6300, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'spike', x: 6550, y: GROUND_Y - 44, w: 44, h: 44 },
+            { type: 'finish', x: 7100, y: GROUND_Y - 200, w: 60, h: 200 },
+          ],
+        },
+        {
+          name: 'Уровень 8 — Хаос', difficulty: 'h

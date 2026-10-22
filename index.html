@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Geometry Dash — 10 уровней</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- ЭКРАН МЕНЮ -->
+    <div id="menuScreen" class="screen active">
+      <h1 class="logo">GEOMETRY DASH</h1>
+      <p class="subtitle">Выбери уровень</p>
+      <div id="levelGrid" class="level-grid"></div>
+      <div class="menu-footer">
+        <span>Управление: <b>Пробел / Клик / Тап</b></span>
+      </div>
+    </div>
+
+    <!-- ЭКРАН ИГРЫ -->
+    <div id="gameScreen" class="screen">
+      <div id="hud">
+        <button id="backBtn" class="hud-btn">← Меню</button>
+        <div id="levelName" class="hud-level">Уровень 1</div>
+        <div id="attempts" class="hud-attempts">Попытки: 0</div>
+      </div>
+      <canvas id="gameCanvas" width="1280" height="720"></canvas>
+      <div id="progressBarContainer">
+        <div id="progressBar"></div>
+      </div>
+    </div>
+
+    <!-- ЭКРАН ПРОИГРЫША -->
+    <div id="deathScreen" class="screen overlay">
+      <div class="death-box">
+        <h2>Ты разбился!</h2>
+        <p id="deathProgress">Прогресс: 0%</p>
+        <button id="retryBtn" class="big-btn">Ещё раз</button>
+        <button id="deathMenuBtn" class="big-btn secondary">В меню</button>
+      </div>
+    </div>
+
+    <!-- ЭКРАН ПОБЕДЫ -->
+    <div id="winScreen" class="screen overlay">
+      <div class="win-box">
+        <h2>Уровень пройден!</h2>
+        <p id="winLevelName"></p>
+        <button id="nextLevelBtn" class="big-btn">Следующий уровень</button>
+        <button id="winMenuBtn" class="big-btn secondary">В меню</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
